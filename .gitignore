@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output
+output/
+
+# Local/private roster data
+data/*.json
+!data/example_justice_history.json
+!data/example_patrol_justice_history.json
+
+# Local/private configs
+config/*.json
+!config/example_*.json
+config/*local*.json
+config/*private*.json

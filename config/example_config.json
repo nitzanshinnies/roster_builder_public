@@ -1,0 +1,28 @@
+{
+  "guards": [
+    "Guard A",
+    "Guard B",
+    "Guard C",
+    "Guard D",
+    "Guard E",
+    "Guard F"
+  ],
+  "shift_duration_hours": 4,
+  "roster_length_days": 7,
+  "constraints": {},
+  "shabbat_observers": [
+    "Guard E"
+  ],
+  "shabbat_shifts": [
+    { "weekday": 5, "start_time": "18:00" },
+    { "weekday": 5, "start_time": "22:00" },
+    { "weekday": 6, "start_time": "02:00" },
+    { "weekday": 6, "start_time": "06:00" },
+    { "weekday": 6, "start_time": "10:00" },
+    { "weekday": 6, "start_time": "14:00" }
+  ],
+  "shabbat_dinner_shift": { "weekday": 5, "start_time": "18:00" },
+  "holiday_dinner_shifts": [
+    { "date": "2026-04-01", "start_time": "18:00" }
+  ]
+}

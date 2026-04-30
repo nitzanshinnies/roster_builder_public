@@ -1,0 +1,16 @@
+{
+  "patrol": true,
+  "guards": [
+    "Patrol A",
+    "Patrol B",
+    "Patrol C",
+    "Patrol D",
+    "Patrol E"
+  ],
+  "rotation_start": "Patrol A",
+  "roster_length_days": 14,
+  "start_date": "2026-04-12 20:30",
+  "algorithm": "srr",
+  "history_file": "data/patrol_justice_history.json",
+  "constraints": {}
+}
