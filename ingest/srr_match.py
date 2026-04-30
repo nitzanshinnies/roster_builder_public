@@ -6,7 +6,7 @@ from datetime import datetime
 
 from history_manager import get_guard_history
 from models import Guard
-from scheduler import ALG_SRR
+from scheduling.builder import ALG_SRR
 from scheduling.continuity import continuity_snapshot
 from scheduling.srr import build_srr
 from shift_constraints import build_guard_shift_constraints_lookup

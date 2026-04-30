@@ -2,7 +2,7 @@
 
 from config_loader import merge_args
 from history_manager import load_history
-from scheduler import build_roster
+from scheduling.builder import build_roster
 
 from .arguments import parse_args
 from .configuration import (

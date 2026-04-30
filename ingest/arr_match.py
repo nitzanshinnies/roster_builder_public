@@ -4,8 +4,8 @@ import random
 from datetime import datetime
 
 from models import Guard
-from scheduler import ALG_ARR
 from scheduling.arr import build_arr
+from scheduling.builder import ALG_ARR
 from scheduling.continuity import continuity_snapshot
 from shift_constraints import build_guard_shift_constraints_lookup
 

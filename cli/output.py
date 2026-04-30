@@ -4,8 +4,9 @@ from datetime import datetime
 from pathlib import Path
 
 from history_manager import commit_history
-from html_renderer import render_justice_html, render_roster_html
 from models import Guard, Roster
+from rendering.justice_html import render_justice_html
+from rendering.roster_html import render_roster_html
 
 from .arguments import START_DATE_FORMAT
 

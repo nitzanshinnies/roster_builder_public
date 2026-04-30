@@ -1,7 +1,7 @@
 """Justice table HTML rendering."""
 
 from models import Roster
-from scheduler import compute_min_rest_per_guard
+from scheduling.counts import compute_min_rest_per_guard
 
 from .html_page import html_document
 from .justice_counts import build_cumulative_counts, has_history_counts, highlight_class, total_range

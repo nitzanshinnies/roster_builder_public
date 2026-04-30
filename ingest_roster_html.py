@@ -10,7 +10,7 @@ from history_manager import commit_history, load_history
 from ingest.html_parser import parse_roster_html
 from ingest.replay import resolve_build_state
 from models import Guard
-from scheduler import ALG_ARR
+from scheduling.builder import ALG_ARR
 
 
 def _build_guards(config: dict) -> list[Guard]:
