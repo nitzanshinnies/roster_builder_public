@@ -407,11 +407,11 @@ python roster_builder.py \
 
 ## Importing Existing HTML Into History
 
-If a roster was generated or edited but not committed, `ingest_roster_html.py` can parse a roster HTML
+If a roster was generated or edited but not committed, `python -m roster_builder_app.ingest_cli` can parse a roster HTML
 file and update history:
 
 ```bash
-python ingest_roster_html.py output/roster_2026-03-09.html \
+python -m roster_builder_app.ingest_cli output/roster_2026-03-09.html \
   --config config/example_config.json \
   --history-file data/justice_history.json
 ```
@@ -419,7 +419,7 @@ python ingest_roster_html.py output/roster_2026-03-09.html \
 Dry run:
 
 ```bash
-python ingest_roster_html.py output/roster_2026-03-09.html \
+python -m roster_builder_app.ingest_cli output/roster_2026-03-09.html \
   --config config/example_config.json \
   --history-file data/justice_history.json \
   --dry-run
