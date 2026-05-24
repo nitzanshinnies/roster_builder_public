@@ -14,7 +14,7 @@ Run a standard roster:
 
 ```bash
 python roster_builder.py \
-  --config config/example_config.json \
+  --config config/default_config.json \
   --start-date "2026-03-09 06:00"
 ```
 
@@ -22,7 +22,7 @@ Run a patrol roster:
 
 ```bash
 python roster_builder.py \
-  --config config/example_patrol_config.json \
+  --config config/patrol_config.json \
   --patrol \
   --start-date "2026-04-12 20:30"
 ```
@@ -55,7 +55,7 @@ python roster_builder.py [options]
 
 Common options:
 
-- `--config <path>`: JSON config file. Example: `config/example_config.json`.
+- `--config <path>`: JSON config file. Example: `config/default_config.json`.
 - `--guards "A,B,C"`: comma-separated guard names. Overrides `guards` from config.
 - `--shift-duration <hours>`: standard roster shift length. Must divide evenly into 24.
 - `--start-date "YYYY-MM-DD HH:MM"`: first roster slot date/time.
@@ -169,6 +169,26 @@ Patrol mode uses these shifts:
 Patrol assignment ignores justice history for scheduling, but the justice report can still display and
 commit patrol counts when requested.
 
+When exactly **four** guards are configured, patrol mode uses **pair rotation**:
+
+- Guards `1` and `2` form one pair; guards `3` and `4` form the other (list order matters).
+- Each night, one pair works both shifts.
+- On that pair's next night, evening and morning roles swap between the two guards.
+
+Optional pair-mode fields:
+
+```json
+{
+  "carryover_guard": "Guard D",
+  "patrol_day_offset": 14
+}
+```
+
+- `carryover_guard`: moves the named guard to the last pair slot (continuity from the previous roster).
+- `patrol_day_offset`: global day counter so pair/swap phase continues across adjacent rosters.
+
+Example four-guard patrol config: `config/example_patrol_pair_config.json`.
+
 ### `rotation_start`
 
 Optional guard name used to rotate the SRR order so this guard appears first.
@@ -266,6 +286,20 @@ Dated constraints can also use just the shift start time:
   }
 }
 ```
+
+### Excluded Shift Slots
+
+Prefix a dated slot with `!` to block a guard from that exact shift only:
+
+```json
+{
+  "constraints": {
+    "Guard B": ["!2026-05-14 02:30 – 08:30"]
+  }
+}
+```
+
+The guard remains eligible for all other shifts unless additional allow-list constraints are set.
 
 ### SRR Behavior With Dated Constraints
 
@@ -373,7 +407,7 @@ rules.
 By default, roster generation is a preview:
 
 ```bash
-python roster_builder.py --config config/example_config.json --start-date "2026-03-09 06:00"
+python roster_builder.py --config config/default_config.json --start-date "2026-03-09 06:00"
 ```
 
 Preview mode writes HTML files but does not update history.
@@ -382,7 +416,7 @@ Use `--commit` to update the selected history file:
 
 ```bash
 python roster_builder.py \
-  --config config/example_config.json \
+  --config config/default_config.json \
   --start-date "2026-03-09 06:00" \
   --commit
 ```
@@ -398,7 +432,7 @@ For patrol:
 
 ```bash
 python roster_builder.py \
-  --config config/example_patrol_config.json \
+  --config config/patrol_config.json \
   --patrol \
   --history-file data/patrol_justice_history.json \
   --start-date "2026-04-30 20:30" \
@@ -412,7 +446,7 @@ file and update history:
 
 ```bash
 python -m roster_builder_app.ingest_cli output/roster_2026-03-09.html \
-  --config config/example_config.json \
+  --config config/default_config.json \
   --history-file data/justice_history.json
 ```
 
@@ -420,7 +454,7 @@ Dry run:
 
 ```bash
 python -m roster_builder_app.ingest_cli output/roster_2026-03-09.html \
-  --config config/example_config.json \
+  --config config/default_config.json \
   --history-file data/justice_history.json \
   --dry-run
 ```

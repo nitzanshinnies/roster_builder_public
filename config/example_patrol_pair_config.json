@@ -1,0 +1,16 @@
+{
+  "patrol": true,
+  "guards": [
+    "Patrol A",
+    "Patrol B",
+    "Patrol C",
+    "Patrol D"
+  ],
+  "roster_length_days": 14,
+  "start_date": "2026-05-26 20:30",
+  "algorithm": "srr",
+  "history_file": "data/example_patrol_justice_history.json",
+  "carryover_guard": "Patrol D",
+  "patrol_day_offset": 0,
+  "constraints": {}
+}

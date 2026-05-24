@@ -12,6 +12,7 @@ class GuardShiftConstraints:
 
     recurring_start_times: set[str] | None
     specific_slots: set[tuple[date, str]]
+    excluded_slots: frozenset[tuple[date, str]] = frozenset()
 
 
 def build_guard_shift_constraints_lookup(guards: list[Guard]) -> dict[str, GuardShiftConstraints]:
@@ -39,11 +40,25 @@ def is_guard_allowed_for_slot(
     roster_day_date: date,
     shift: Shift,
 ) -> bool:
+    if matches_excluded_slot(constraints, roster_day_date, shift):
+        return False
     if matches_specific_slot(constraints, roster_day_date, shift):
         return True
     if constraints.recurring_start_times is None:
         return True
     return shift.start_time in constraints.recurring_start_times
+
+
+def matches_excluded_slot(
+    constraints: GuardShiftConstraints,
+    roster_day_date: date,
+    shift: Shift,
+) -> bool:
+    shift_names = _slot_shift_names(shift)
+    return any(
+        slot_date == roster_day_date and shift_name in shift_names
+        for slot_date, shift_name in constraints.excluded_slots
+    )
 
 
 def is_specific_only_guard(constraints: GuardShiftConstraints) -> bool:
@@ -68,9 +83,15 @@ def parse_guard_shift_constraints(allowed_shifts: list[str] | set[str] | None) -
 
     recurring_start_times: set[str] = set()
     specific_slots: set[tuple[date, str]] = set()
+    excluded_slots: set[tuple[date, str]] = set()
     for raw in allowed_shifts:
         value = str(raw).strip()
         if not value:
+            continue
+        if value.startswith("!"):
+            excluded = _specific_shift_slot(value[1:].strip())
+            if excluded is not None:
+                excluded_slots.add(excluded)
             continue
         specific_slot = _specific_shift_slot(value)
         if specific_slot is not None:
@@ -78,9 +99,17 @@ def parse_guard_shift_constraints(allowed_shifts: list[str] | set[str] | None) -
             continue
         recurring_start_times.add(value)
 
+    if recurring_start_times:
+        resolved_recurring: set[str] | None = recurring_start_times
+    elif specific_slots:
+        resolved_recurring = set()
+    else:
+        resolved_recurring = None
+
     return GuardShiftConstraints(
-        recurring_start_times=recurring_start_times,
+        recurring_start_times=resolved_recurring,
         specific_slots=specific_slots,
+        excluded_slots=frozenset(excluded_slots),
     )
 
 

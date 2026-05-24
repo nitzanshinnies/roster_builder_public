@@ -44,6 +44,8 @@ def print_generation_summary(
     print(f"   Guards: {len(guards)}")
     if patrol:
         print(f"   Mode: patrol (20:30-02:30, 02:30-08:30), {shift_duration}h per shift")
+        if len(guards) == 4:
+            print("   Patrol pair rotation: 4 guards, alternating shifts within pairs")
     else:
         print(f"   Shift duration: {shift_duration}h")
     print(f"   Start: {start_date.strftime(START_DATE_FORMAT)}")

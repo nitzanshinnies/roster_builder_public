@@ -17,6 +17,11 @@ from roster_builder_app.shift_constraints import build_guard_shift_constraints_l
 from .arr import build_arr
 from .continuity import continuity_matches, continuity_snapshot, parse_arr_continuity, parse_srr_continuity
 from .counts import compute_min_rest_per_guard
+from .patrol_pair_srr import (
+    PATROL_PAIR_GUARD_COUNT,
+    build_patrol_pair_srr,
+    parse_patrol_pair_seed,
+)
 from .srr import build_srr
 
 ALG_ARR = "arr"
@@ -49,18 +54,35 @@ def build_roster(
     arr_ends_out: dict[str, datetime | None] | None = None
 
     if algorithm == ALG_SRR:
-        srr_seed = None if patrol else parse_srr_continuity(schedule["continuity"], guards)
-        current_counts, srr_state_out = build_srr(
-            guards,
-            schedule["shifts"],
-            roster_days,
-            history,
-            guard_allowed,
-            rules,
-            srr_seed=srr_seed,
-            patrol=patrol,
-            rotation_start=rotation_start,
-        )
+        if patrol and len(guards) == PATROL_PAIR_GUARD_COUNT:
+            global_day_offset, carryover_guard = parse_patrol_pair_seed(
+                schedule["continuity"],
+                guards,
+                rules,
+            )
+            current_counts, srr_state_out = build_patrol_pair_srr(
+                guards,
+                schedule["shifts"],
+                roster_days,
+                guard_allowed,
+                global_day_offset=global_day_offset,
+                carryover_guard=carryover_guard,
+            )
+            if carryover_guard and srr_state_out is not None:
+                srr_state_out["carryover_guard"] = carryover_guard
+        else:
+            srr_seed = None if patrol else parse_srr_continuity(schedule["continuity"], guards)
+            current_counts, srr_state_out = build_srr(
+                guards,
+                schedule["shifts"],
+                roster_days,
+                history,
+                guard_allowed,
+                rules,
+                srr_seed=srr_seed,
+                patrol=patrol,
+                rotation_start=rotation_start,
+            )
     else:
         arr_last_seed = None if patrol else parse_arr_continuity(schedule["continuity"], guards)
         current_counts, arr_ends_out = build_arr(
@@ -108,7 +130,14 @@ def _schedule_shape(
     if patrol:
         shifts = patrol_shifts()
         return {
-            "continuity": None,
+            "continuity": continuity_matches(
+                history,
+                start_date,
+                guards,
+                algorithm,
+                PATROL_SHIFT_DURATION_HOURS,
+                shifts[0].start_time,
+            ),
             "effective_shift_hours": PATROL_SHIFT_DURATION_HOURS,
             "first_shift_start": shifts[0].start_time,
             "shifts": shifts,

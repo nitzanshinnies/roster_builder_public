@@ -6,6 +6,7 @@ from roster_builder_app.shift_constraints import (
     build_guard_shift_constraints_lookup,
     is_guard_allowed_for_slot,
     is_specific_only_guard,
+    matches_excluded_slot,
     matches_specific_slot,
     parse_guard_shift_constraints,
 )
@@ -43,6 +44,26 @@ class ShiftConstraintTests(unittest.TestCase):
         self.assertTrue(is_specific_only_guard(constraints))
         self.assertTrue(is_guard_allowed_for_slot(constraints, date(2026, 5, 2), shift))
         self.assertFalse(is_guard_allowed_for_slot(constraints, date(2026, 5, 3), shift))
+
+    def test_excluded_slot_blocks_that_shift_only(self) -> None:
+        morning = Shift(start_time="02:30", end_time="08:30", label="02:30 – 08:30")
+        evening = Shift(start_time="20:30", end_time="02:30", label="20:30 – 02:30")
+        constraints = parse_guard_shift_constraints({"!2026-05-14 02:30 – 08:30"})
+
+        self.assertTrue(matches_excluded_slot(constraints, date(2026, 5, 14), morning))
+        self.assertFalse(matches_excluded_slot(constraints, date(2026, 5, 14), evening))
+        self.assertFalse(is_guard_allowed_for_slot(constraints, date(2026, 5, 14), morning))
+        self.assertTrue(is_guard_allowed_for_slot(constraints, date(2026, 5, 14), evening))
+        self.assertTrue(is_guard_allowed_for_slot(constraints, date(2026, 5, 15), morning))
+
+    def test_exclusion_combined_with_recurring_allow(self) -> None:
+        morning = Shift(start_time="02:30", end_time="08:30", label="02:30 – 08:30")
+        constraints = parse_guard_shift_constraints(
+            {"02:30", "!2026-05-14 02:30 – 08:30"}
+        )
+
+        self.assertFalse(is_guard_allowed_for_slot(constraints, date(2026, 5, 14), morning))
+        self.assertTrue(is_guard_allowed_for_slot(constraints, date(2026, 5, 15), morning))
 
 
 if __name__ == "__main__":
