@@ -1,4 +1,60 @@
 {
-  "last_updated": null,
-  "guards": {}
+  "last_updated": "2026-06-01",
+  "guards": {
+    "Patrol A": {
+      "total": 7,
+      "shifts": {
+        "20:30": 4,
+        "02:30": 3
+      },
+      "friday_dinner": 0
+    },
+    "Patrol B": {
+      "total": 7,
+      "shifts": {
+        "20:30": 3,
+        "02:30": 4
+      },
+      "friday_dinner": 0
+    },
+    "Patrol C": {
+      "total": 7,
+      "shifts": {
+        "20:30": 4,
+        "02:30": 3
+      },
+      "friday_dinner": 0
+    },
+    "Patrol D": {
+      "total": 7,
+      "shifts": {
+        "20:30": 3,
+        "02:30": 4
+      },
+      "friday_dinner": 0
+    }
+  },
+  "roster_continuity": {
+    "next_roster_start": "2026-06-15T20:30:00",
+    "algorithm": "srr",
+    "shift_duration_hours": 6,
+    "first_shift_start": "20:30",
+    "guards": [
+      "Patrol A",
+      "Patrol B",
+      "Patrol C",
+      "Patrol D"
+    ],
+    "srr": {
+      "patrol_pair_mode": true,
+      "rotation_order": [
+        "Patrol A",
+        "Patrol B",
+        "Patrol C",
+        "Patrol D"
+      ],
+      "next_patrol_day_offset": 14,
+      "carryover_guard": "Patrol D"
+    }
+  }
 }
