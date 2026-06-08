@@ -39,6 +39,7 @@
     "algorithm": "srr",
     "shift_duration_hours": 6,
     "first_shift_start": "20:30",
+    "roster_length_days": 14,
     "guards": [
       "Patrol A",
       "Patrol B",
@@ -47,6 +48,7 @@
     ],
     "srr": {
       "patrol_pair_mode": true,
+      "previous_patrol_day_offset": 0,
       "rotation_order": [
         "Patrol A",
         "Patrol B",
@@ -54,7 +56,11 @@
         "Patrol D"
       ],
       "next_patrol_day_offset": 14,
-      "carryover_guard": "Patrol D"
+      "carryover_guard": "Patrol D",
+      "last_assignments": {
+        "Patrol C": { "date": "2026-06-14", "start_time": "20:30" },
+        "Patrol D": { "date": "2026-06-14", "start_time": "02:30" }
+      }
     }
   }
 }

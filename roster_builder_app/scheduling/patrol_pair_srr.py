@@ -66,6 +66,7 @@ def build_patrol_pair_srr(
     next_patrol_day_offset = global_day_offset + len(roster_days)
     srr_state = {
         "patrol_pair_mode": True,
+        "previous_patrol_day_offset": global_day_offset,
         "rotation_order": [guard.name for guard in ordered_guards],
         "next_patrol_day_offset": next_patrol_day_offset,
     }

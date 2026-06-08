@@ -43,8 +43,7 @@ def build_guards(merged: dict) -> list[Guard]:
 
 
 def history_for_generation(history_disk: dict, patrol: bool) -> dict:
-    if patrol:
-        return {"last_updated": None, "guards": {}}
+    """Pass justice history for rotation fairness; patrol still skips history-based ordering."""
     return history_disk
 
 

@@ -15,12 +15,17 @@ from roster_builder_app.models import (
 from roster_builder_app.shift_constraints import build_guard_shift_constraints_lookup
 
 from .arr import build_arr
-from .continuity import continuity_matches, continuity_snapshot, parse_arr_continuity, parse_srr_continuity
+from .continuity import (
+    continuity_matches,
+    continuity_snapshot,
+    parse_arr_continuity,
+)
 from .counts import compute_min_rest_per_guard
-from .patrol_pair_srr import (
-    PATROL_PAIR_GUARD_COUNT,
-    build_patrol_pair_srr,
-    parse_patrol_pair_seed,
+from .patrol_pair_srr import PATROL_PAIR_GUARD_COUNT, build_patrol_pair_srr
+from .rotation_fairness import (
+    extract_last_assignments,
+    resolve_patrol_pair_plan,
+    resolve_srr_rotation_seed,
 )
 from .srr import build_srr
 
@@ -41,7 +46,7 @@ def build_roster(
     rules: dict | None = None,
     patrol: bool = False,
     rotation_start: str | None = None,
-) -> tuple[Roster, dict, dict, bool]:
+) -> tuple[Roster, dict, dict, bool, dict]:
     """Build a roster by dispatching to the selected algorithm."""
     if algorithm not in VALID_ALGORITHMS:
         raise ValueError(f"Unknown algorithm '{algorithm}'. Use one of: {VALID_ALGORITHMS}")
@@ -52,16 +57,25 @@ def build_roster(
     guard_allowed = build_guard_shift_constraints_lookup(guards)
     srr_state_out: dict | None = None
     arr_ends_out: dict[str, datetime | None] | None = None
+    fairness_report: dict = {}
 
     if algorithm == ALG_SRR:
         if patrol and len(guards) == PATROL_PAIR_GUARD_COUNT:
-            global_day_offset, carryover_guard = parse_patrol_pair_seed(
-                schedule["continuity"],
-                guards,
-                rules,
+            ordered_guards, global_day_offset, carryover_guard, fairness_report = (
+                resolve_patrol_pair_plan(
+                    guards,
+                    schedule["shifts"],
+                    roster_days,
+                    guard_allowed,
+                    history,
+                    schedule["continuity"],
+                    rules,
+                    roster_start=start_date,
+                    shift_duration_hours=schedule["effective_shift_hours"],
+                )
             )
             current_counts, srr_state_out = build_patrol_pair_srr(
-                guards,
+                ordered_guards,
                 schedule["shifts"],
                 roster_days,
                 guard_allowed,
@@ -71,7 +85,19 @@ def build_roster(
             if carryover_guard and srr_state_out is not None:
                 srr_state_out["carryover_guard"] = carryover_guard
         else:
-            srr_seed = None if patrol else parse_srr_continuity(schedule["continuity"], guards)
+            rotation_order, rotation_idx, fairness_report = resolve_srr_rotation_seed(
+                guards,
+                schedule["shifts"],
+                roster_days,
+                guard_allowed,
+                history,
+                schedule["continuity"],
+                rules,
+                patrol=patrol,
+                rotation_start=rotation_start,
+                roster_start=start_date,
+                shift_duration_hours=schedule["effective_shift_hours"],
+            )
             current_counts, srr_state_out = build_srr(
                 guards,
                 schedule["shifts"],
@@ -79,7 +105,7 @@ def build_roster(
                 history,
                 guard_allowed,
                 rules,
-                srr_seed=srr_seed,
+                srr_seed=(rotation_order, rotation_idx),
                 patrol=patrol,
                 rotation_start=rotation_start,
             )
@@ -98,6 +124,12 @@ def build_roster(
         )
 
     roster = Roster(days=roster_days, shifts=schedule["shifts"], guards=guards, start_date=start_date)
+    if srr_state_out is not None:
+        srr_state_out["last_assignments"] = extract_last_assignments(
+            roster,
+            schedule["effective_shift_hours"],
+        )
+
     next_continuity_snapshot = continuity_snapshot(
         start_date,
         roster_length_days,
@@ -108,7 +140,13 @@ def build_roster(
         srr_state=srr_state_out,
         arr_last_shift_end=arr_ends_out,
     )
-    return roster, current_counts, next_continuity_snapshot, schedule["continuity"] is not None
+    return (
+        roster,
+        current_counts,
+        next_continuity_snapshot,
+        schedule["continuity"] is not None,
+        fairness_report,
+    )
 
 
 def _build_roster_days(start_date: datetime, roster_length_days: int) -> list[RosterDay]:

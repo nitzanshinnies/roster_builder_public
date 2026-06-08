@@ -14,7 +14,13 @@ from .configuration import (
     resolve_shift_duration,
     resolve_start_date,
 )
-from .output import commit_or_explain, print_generation_summary, render_outputs, write_outputs
+from .output import (
+    commit_or_explain,
+    print_carryover_fairness_report,
+    print_generation_summary,
+    render_outputs,
+    write_outputs,
+)
 
 
 def main() -> None:
@@ -42,7 +48,7 @@ def main() -> None:
         shift_duration,
         start_date,
     )
-    roster, current_counts, continuity_snapshot, continuity_applied = build_roster(
+    roster, current_counts, continuity_snapshot, continuity_applied, fairness_report = build_roster(
         guards=guards,
         shift_duration_hours=shift_duration,
         start_date=start_date,
@@ -56,6 +62,7 @@ def main() -> None:
     if continuity_applied:
         print("   Continuity: using previous roster state (rotation / rest).")
         print()
+    print_carryover_fairness_report(fairness_report)
 
     roster_html, justice_html = render_outputs(
         roster,

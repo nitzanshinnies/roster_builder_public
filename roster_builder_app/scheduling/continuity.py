@@ -55,6 +55,7 @@ def continuity_snapshot(
         "shift_duration_hours": shift_duration_hours,
         "first_shift_start": first_shift_start,
         "guards": guard_names_sorted(guards),
+        "roster_length_days": roster_length_days,
     }
     if srr_state is not None:
         snap["srr"] = srr_state

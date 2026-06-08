@@ -166,8 +166,9 @@ Patrol mode uses these shifts:
 - `20:30-02:30`
 - `02:30-08:30`
 
-Patrol assignment ignores justice history for scheduling, but the justice report can still display and
-commit patrol counts when requested.
+Patrol assignment does not reorder guards by total historical workload, but when **continuity
+matches** the previous committed roster, justice history is used to balance **shift-type fairness**
+(20:30 vs 02:30) for carryover guards. The justice report can still display and commit patrol counts.
 
 When exactly **four** guards are configured, patrol mode uses **pair rotation**:
 
@@ -185,9 +186,27 @@ Optional pair-mode fields:
 ```
 
 - `carryover_guard`: moves the named guard to the last pair slot (continuity from the previous roster).
-- `patrol_day_offset`: global day counter so pair/swap phase continues across adjacent rosters.
+- `patrol_day_offset`: optional fallback day counter when no committed continuity exists.
+- `force_patrol_day_offset`: optional override; skips automatic fairness search.
+
+When continuity matches, the scheduler auto-selects pair order and day offset so carryover guards
+approach balanced early/late counts and adequate rest across the roster boundary.
 
 Example four-guard patrol config: `config/example_patrol_pair_config.json`.
+
+### Carryover fairness (patrol and guard rosters)
+
+After `--commit`, history stores `roster_continuity` including `last_assignments` per guard.
+
+On the next adjacent roster (same algorithm, shift shape, and `next_roster_start`):
+
+- **Carryover guards** are those present in both the new guard list and the saved continuity list.
+- **Patrol pair mode (4 guards)** tries pair-order swaps and the next phase offset, scoring projected
+  early/late balance plus boundary rest.
+- **Standard / non-pair SRR** tries the saved rotation index and the next index, scoring projected
+  per-shift-type spread for carryovers.
+
+The CLI prints a carryover fairness summary when applicable.
 
 ### `rotation_start`
 

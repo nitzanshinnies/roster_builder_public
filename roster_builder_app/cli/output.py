@@ -52,9 +52,21 @@ def print_generation_summary(
     print(f"   Days: {roster_length}")
     print(f"   Algorithm: {alg_name} ({algorithm})")
     if patrol:
-        print("   History: not used for assignment (logging only)")
+        print("   History: used for carryover shift-type fairness when continuity matches")
     else:
         print(f"   History: {'loaded' if history.get('last_updated') else 'none'}")
+    print()
+
+
+def print_carryover_fairness_report(fairness_report: dict) -> None:
+    rows = fairness_report.get("carryovers") if fairness_report else None
+    if not rows:
+        return
+    print("   Carryover fairness (projected shift-type balance):")
+    for row in rows:
+        projected = row.get("projected_shifts", {})
+        spread = row.get("projected_spread", 0)
+        print(f"      {row['name']}: projected {projected} (spread {spread})")
     print()
 
 
