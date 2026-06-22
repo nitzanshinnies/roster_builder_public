@@ -30,26 +30,48 @@ def _cell_text(html_fragment: str) -> str:
 
 
 def _parse_roster_length(raw: str) -> int:
-    thead_match = re.search(r"<thead>(.*?)</thead>", raw, re.DOTALL | re.IGNORECASE)
-    if not thead_match:
-        raise ValueError("No <thead> found")
-    header_dates = re.findall(
-        r'<span class="date">\((\d{2})/(\d{2})\)</span>',
-        thead_match.group(1),
-    )
-    if not header_dates:
+    total = 0
+    for thead_html in re.findall(r"<thead>(.*?)</thead>", raw, re.DOTALL | re.IGNORECASE):
+        header_dates = re.findall(
+            r'<span class="date">\((\d{2})/(\d{2})\)</span>',
+            thead_html,
+        )
+        total += len(header_dates)
+    if total == 0:
         raise ValueError("No column dates in header")
-    return len(header_dates)
+    return total
 
 
 def _parse_shift_grid(raw: str, roster_length: int) -> tuple[list[list[str]], int]:
-    tbody_match = re.search(r"<tbody>(.*?)</tbody>", raw, re.DOTALL | re.IGNORECASE)
-    if not tbody_match:
+    tbody_parts = re.findall(r"<tbody>(.*?)</tbody>", raw, re.DOTALL | re.IGNORECASE)
+    if not tbody_parts:
         raise ValueError("No <tbody> found")
-    rows = re.findall(r"<tr>(.*?)</tr>", tbody_match.group(1), re.DOTALL | re.IGNORECASE)
 
-    grid: list[list[str]] = []
     roster_start_hour = 6
+    merged: list[list[str]] | None = None
+    for tbody_html in tbody_parts:
+        part, roster_start_hour = _parse_single_tbody(tbody_html, roster_start_hour)
+        if merged is None:
+            merged = part
+            continue
+        if len(part) != len(merged):
+            raise ValueError("Roster tables have inconsistent shift row counts")
+        for shift_index, names in enumerate(part):
+            merged[shift_index].extend(names)
+
+    assert merged is not None
+    for row in merged:
+        if len(row) != roster_length:
+            raise ValueError(f"Row has {len(row)} day cells, expected {roster_length}")
+    return merged, roster_start_hour
+
+
+def _parse_single_tbody(
+    tbody_html: str,
+    roster_start_hour: int,
+) -> tuple[list[list[str]], int]:
+    rows = re.findall(r"<tr>(.*?)</tr>", tbody_html, re.DOTALL | re.IGNORECASE)
+    grid: list[list[str]] = []
     for table_row in rows:
         cells = re.findall(r"<td([^>]*)>(.*?)</td>", table_row, re.DOTALL | re.IGNORECASE)
         if len(cells) < 2:
@@ -59,11 +81,8 @@ def _parse_shift_grid(raw: str, roster_length: int) -> tuple[list[list[str]], in
             continue
         shift_text = _cell_text(first_inner)
         roster_start_hour = _detect_start_hour(shift_text, grid, roster_start_hour)
-        names = [_cell_text(inner) for _, inner in cells[1 : 1 + roster_length]]
-        if len(names) != roster_length:
-            raise ValueError(f"Row has {len(names)} day cells, expected {roster_length}: {shift_text!r}")
+        names = [_cell_text(inner) for _, inner in cells[1:]]
         grid.append(names)
-
     if not grid:
         raise ValueError("No shift rows parsed")
     return grid, roster_start_hour

@@ -94,6 +94,9 @@ ROSTER_STYLE = BASE_TABLE_STYLE + """
         h1 {
             margin-bottom: 20px;
         }
+        h1 + table {
+            margin-bottom: 36px;
+        }
         th, td {
             padding: 12px 8px;
         }
