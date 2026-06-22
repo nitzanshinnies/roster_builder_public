@@ -192,6 +192,10 @@ Optional pair-mode fields:
 When continuity matches, the scheduler auto-selects pair order and day offset so carryover guards
 approach balanced early/late counts and adequate rest across the roster boundary.
 
+When the guard list changes between rosters, **entering guards** (present now but not on the
+previous committed roster) are placed in pair slot 1 and scheduled on **night 0**, so carryover
+guards rest across the boundary instead of opening the new roster.
+
 Example four-guard patrol config: `config/example_patrol_pair_config.json`.
 
 ### Carryover fairness (patrol and guard rosters)

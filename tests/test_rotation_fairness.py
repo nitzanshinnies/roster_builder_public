@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from roster_builder_app.models import Guard, RosterDay, generate_shifts, get_hebrew_day_name, patrol_shifts
 from roster_builder_app.scheduling.rotation_fairness import (
     carryover_guard_names,
+    entering_guard_names,
     extract_last_assignments,
     resolve_patrol_pair_plan,
     resolve_srr_rotation_seed,
@@ -85,6 +86,75 @@ class RotationFairnessTests(unittest.TestCase):
         by_name = {row["name"]: row for row in report["carryovers"]}
         self.assertEqual(by_name["יחיאל אלבז"]["projected_spread"], 0)
         self.assertEqual(by_name["מאור תורג׳מן"]["projected_spread"], 0)
+
+    def test_patrol_pair_plan_puts_entering_guards_on_first_night_when_roster_changes(self) -> None:
+        start = datetime(2026, 6, 23, 20, 30)
+        shifts = patrol_shifts()
+        roster_days = _days(start, 30)
+        guards = [
+            Guard("מאור אוחיון"),
+            Guard("עדי תורג׳מן"),
+            Guard("חנן דנינו"),
+            Guard("מאור תורג׳מן"),
+        ]
+        history = {
+            "guards": {
+                "מאור תורג׳מן": {"total": 18, "shifts": {"20:30": 8, "02:30": 10}, "friday_dinner": 0},
+                "חנן דנינו": {"total": 7, "shifts": {"20:30": 4, "02:30": 3}, "friday_dinner": 0},
+            }
+        }
+        continuity = {
+            "next_roster_start": start.isoformat(),
+            "algorithm": "srr",
+            "shift_duration_hours": 6,
+            "first_shift_start": "20:30",
+            "guards": ["חנן דנינו", "יותם קדוש", "יחיאל אלבז", "מאור תורג׳מן"],
+            "roster_length_days": 14,
+            "srr": {
+                "patrol_pair_mode": True,
+                "next_patrol_day_offset": 42,
+                "carryover_guard": "מאור תורג׳מן",
+                "last_assignments": {
+                    "חנן דנינו": {"date": "2026-06-22", "start_time": "20:30"},
+                    "מאור תורג׳מן": {"date": "2026-06-23", "start_time": "02:30"},
+                },
+            },
+        }
+        rules = {"carryover_guard": "מאור תורג׳מן"}
+        guard_allowed = build_guard_shift_constraints_lookup(guards)
+
+        ordered, offset, carryover, _report = resolve_patrol_pair_plan(
+            guards,
+            shifts,
+            roster_days,
+            guard_allowed,
+            history,
+            continuity,
+            rules,
+            roster_start=start,
+            shift_duration_hours=6,
+        )
+
+        self.assertEqual(entering_guard_names(guards, continuity), {"מאור אוחיון", "עדי תורג׳מן"})
+        self.assertEqual(carryover, "מאור תורג׳מן")
+        self.assertEqual(offset % 2, 0)
+        self.assertEqual({guard.name for guard in ordered[0:2]}, {"מאור אוחיון", "עדי תורג׳מן"})
+
+        from roster_builder_app.scheduling.patrol_pair_srr import (
+            patrol_guard_pairs,
+            patrol_pair_assignments_for_day,
+            patrol_pair_guard_order,
+        )
+
+        pair_order = patrol_pair_guard_order(ordered, carryover)
+        evening_guard, morning_guard = patrol_pair_assignments_for_day(
+            0,
+            patrol_guard_pairs(pair_order),
+            global_day_offset=offset,
+        )
+        self.assertIn(evening_guard.name, {"מאור אוחיון", "עדי תורג׳מן"})
+        self.assertIn(morning_guard.name, {"מאור אוחיון", "עדי תורג׳מן"})
+        self.assertNotIn(evening_guard.name, carryover_guard_names(guards, continuity))
 
     def test_guard_srr_seed_picks_fairer_rotation_index_for_carryover(self) -> None:
         start = datetime(2026, 6, 9, 6, 0)

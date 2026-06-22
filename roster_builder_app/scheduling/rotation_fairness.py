@@ -7,7 +7,13 @@ from datetime import date, datetime, timedelta
 from roster_builder_app.history_manager import get_guard_history
 from roster_builder_app.models import Guard, Roster, RosterDay, Shift
 
-from .patrol_pair_srr import PATROL_PAIR_GUARD_COUNT, build_patrol_pair_srr
+from .patrol_pair_srr import (
+    PATROL_PAIR_GUARD_COUNT,
+    build_patrol_pair_srr,
+    patrol_guard_pairs,
+    patrol_pair_assignments_for_day,
+    patrol_pair_guard_order,
+)
 from .srr import build_srr
 from .srr_rotation import srr_rotation_seed
 from .continuity import parse_srr_continuity
@@ -15,6 +21,8 @@ from .time_utils import shift_datetime
 
 MIN_PATROL_BOUNDARY_REST_HOURS = 36
 MIN_GUARD_BOUNDARY_REST_HOURS = 8
+CARRYOVER_GUARD_FIRST_NIGHT_PENALTY = 10_000.0
+ENTERING_PAIR_NOT_FIRST_NIGHT_PENALTY = 5_000.0
 
 
 def carryover_guard_names(guards: list[Guard], continuity: dict | None) -> set[str]:
@@ -25,6 +33,17 @@ def carryover_guard_names(guards: list[Guard], continuity: dict | None) -> set[s
         return set()
     current = {guard.name for guard in guards}
     return current & set(saved)
+
+
+def entering_guard_names(guards: list[Guard], continuity: dict | None) -> set[str]:
+    """Guards joining this roster who were not on the previous committed roster."""
+    if not continuity:
+        return set()
+    saved = continuity.get("guards")
+    if not isinstance(saved, list):
+        return set()
+    current = {guard.name for guard in guards}
+    return current - set(saved)
 
 
 def parse_last_assignments(continuity: dict | None) -> dict[str, tuple[date, str]]:
@@ -92,21 +111,16 @@ def resolve_patrol_pair_plan(
     """Pick pair order and day offset to balance carryover early/late history."""
     rules = rules or {}
     carryovers = carryover_guard_names(guards, continuity)
+    entering = entering_guard_names(guards, continuity)
     carryover_guard = _resolve_carryover_guard(guards, continuity, rules, carryovers)
     base_offset = _base_patrol_day_offset(continuity, rules)
-    force_offset = rules.get("force_patrol_day_offset")
-    if isinstance(force_offset, int):
-        offset_candidates = [force_offset]
-    elif len(roster_days) % 2 == 0:
-        offset_candidates = [base_offset, base_offset + 1]
-    else:
-        offset_candidates = [base_offset]
-
+    offset_candidates = _patrol_offset_candidates(base_offset, len(roster_days), rules)
     config_names = [guard.name for guard in guards]
+    name_orders = _patrol_pair_name_orders(config_names, entering=entering)
     best_score = None
     best: tuple[list[str], int] | None = None
 
-    for name_order in _patrol_pair_name_orders(config_names):
+    for name_order in name_orders:
         for offset in offset_candidates:
             score = _score_patrol_pair_candidate(
                 guards,
@@ -116,6 +130,7 @@ def resolve_patrol_pair_plan(
                 guard_allowed,
                 history,
                 carryovers,
+                entering,
                 carryover_guard,
                 offset,
                 continuity,
@@ -262,6 +277,19 @@ def _resolve_carryover_guard(
     return None
 
 
+def _patrol_offset_candidates(base_offset: int, roster_length_days: int, rules: dict) -> list[int]:
+    force_offset = rules.get("force_patrol_day_offset")
+    if isinstance(force_offset, int):
+        return [force_offset]
+    if roster_length_days % 2 != 0:
+        return [base_offset]
+    pair0_night = base_offset if base_offset % 2 == 0 else base_offset + 1
+    pair1_night = base_offset if base_offset % 2 == 1 else base_offset + 1
+    if pair0_night == pair1_night:
+        return [pair0_night]
+    return [pair0_night, pair1_night]
+
+
 def _base_patrol_day_offset(continuity: dict | None, rules: dict) -> int:
     if continuity:
         block = continuity.get("srr")
@@ -275,7 +303,7 @@ def _base_patrol_day_offset(continuity: dict | None, rules: dict) -> int:
     return 0
 
 
-def _patrol_pair_name_orders(names: list[str]) -> list[list[str]]:
+def _patrol_pair_name_orders(names: list[str], *, entering: set[str] | None = None) -> list[list[str]]:
     if len(names) != PATROL_PAIR_GUARD_COUNT:
         return [list(names)]
     orders: list[list[str]] = []
@@ -288,6 +316,10 @@ def _patrol_pair_name_orders(names: list[str]) -> list[list[str]]:
                 order[2], order[3] = order[3], order[2]
             if order not in orders:
                 orders.append(order)
+    if entering and len(entering) == 2:
+        preferred = [order for order in orders if set(order[0:2]) == entering]
+        if preferred:
+            return preferred
     return orders
 
 
@@ -331,6 +363,7 @@ def _score_patrol_pair_candidate(
     guard_allowed: dict,
     history: dict,
     carryovers: set[str],
+    entering: set[str],
     carryover_guard: str | None,
     global_day_offset: int,
     continuity: dict | None,
@@ -358,7 +391,44 @@ def _score_patrol_pair_candidate(
         shift_duration_hours,
         MIN_PATROL_BOUNDARY_REST_HOURS,
     )
+    score += _entering_guards_first_night_penalty(
+        ordered,
+        carryovers,
+        entering,
+        carryover_guard,
+        global_day_offset,
+    )
     return score
+
+
+def _entering_guards_first_night_penalty(
+    guards: list[Guard],
+    carryovers: set[str],
+    entering: set[str],
+    carryover_guard: str | None,
+    global_day_offset: int,
+) -> float:
+    """Prefer the entering pair on night 0 so carryovers rest across the roster boundary."""
+    if not carryovers or len(entering) != 2 or len(guards) != PATROL_PAIR_GUARD_COUNT:
+        return 0.0
+
+    ordered = patrol_pair_guard_order(guards, carryover_guard)
+    pairs = patrol_guard_pairs(ordered)
+    evening_guard, morning_guard = patrol_pair_assignments_for_day(
+        0,
+        pairs,
+        global_day_offset=global_day_offset,
+    )
+    penalty = 0.0
+    if global_day_offset % 2 != 0:
+        penalty += ENTERING_PAIR_NOT_FIRST_NIGHT_PENALTY
+    if {guard.name for guard in ordered[0:2]} != entering:
+        penalty += ENTERING_PAIR_NOT_FIRST_NIGHT_PENALTY
+    if evening_guard.name in carryovers:
+        penalty += CARRYOVER_GUARD_FIRST_NIGHT_PENALTY
+    if morning_guard.name in carryovers:
+        penalty += CARRYOVER_GUARD_FIRST_NIGHT_PENALTY * 0.5
+    return penalty
 
 
 def _score_guard_srr_candidate(
