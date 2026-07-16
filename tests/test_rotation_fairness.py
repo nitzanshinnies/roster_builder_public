@@ -33,15 +33,15 @@ class RotationFairnessTests(unittest.TestCase):
         shifts = patrol_shifts()
         roster_days = _days(start, 14)
         guards = [
-            Guard("יחיאל אלבז"),
-            Guard("יותם קדוש"),
-            Guard("חנן אוחיון"),
-            Guard("מאור תורג׳מן"),
+            Guard("Patrol A"),
+            Guard("Patrol B"),
+            Guard("Patrol C"),
+            Guard("Patrol D"),
         ]
         history = {
             "guards": {
-                "יחיאל אלבז": {"total": 7, "shifts": {"20:30": 4, "02:30": 3}, "friday_dinner": 0},
-                "מאור תורג׳מן": {"total": 7, "shifts": {"20:30": 4, "02:30": 3}, "friday_dinner": 0},
+                "Patrol A": {"total": 7, "shifts": {"20:30": 4, "02:30": 3}, "friday_dinner": 0},
+                "Patrol D": {"total": 7, "shifts": {"20:30": 4, "02:30": 3}, "friday_dinner": 0},
             }
         }
         continuity = {
@@ -49,18 +49,18 @@ class RotationFairnessTests(unittest.TestCase):
             "algorithm": "srr",
             "shift_duration_hours": 6,
             "first_shift_start": "20:30",
-            "guards": ["יחיאל אלבז", "מאור תורג׳מן", "יותם קדוש", "חנן אוחיון"],
+            "guards": ["Patrol A", "Patrol D", "Patrol B", "Patrol C"],
             "roster_length_days": 14,
             "srr": {
                 "patrol_pair_mode": True,
                 "next_patrol_day_offset": 28,
                 "last_assignments": {
-                    "יחיאל אלבז": {"date": "2026-06-07", "start_time": "20:30"},
-                    "מאור תורג׳מן": {"date": "2026-06-08", "start_time": "20:30"},
+                    "Patrol A": {"date": "2026-06-07", "start_time": "20:30"},
+                    "Patrol D": {"date": "2026-06-08", "start_time": "20:30"},
                 },
             },
         }
-        rules = {"carryover_guard": "מאור תורג׳מן"}
+        rules = {"carryover_guard": "Patrol D"}
         guard_allowed = build_guard_shift_constraints_lookup(guards)
 
         ordered, offset, carryover, report = resolve_patrol_pair_plan(
@@ -76,31 +76,31 @@ class RotationFairnessTests(unittest.TestCase):
         )
 
         self.assertEqual(offset, 28)
-        self.assertEqual(carryover, "מאור תורג׳מן")
+        self.assertEqual(carryover, "Patrol D")
         self.assertEqual([guard.name for guard in ordered], [
-            "יותם קדוש",
-            "יחיאל אלבז",
-            "חנן אוחיון",
-            "מאור תורג׳מן",
+            "Patrol B",
+            "Patrol A",
+            "Patrol C",
+            "Patrol D",
         ])
         by_name = {row["name"]: row for row in report["carryovers"]}
-        self.assertEqual(by_name["יחיאל אלבז"]["projected_spread"], 0)
-        self.assertEqual(by_name["מאור תורג׳מן"]["projected_spread"], 0)
+        self.assertEqual(by_name["Patrol A"]["projected_spread"], 0)
+        self.assertEqual(by_name["Patrol D"]["projected_spread"], 0)
 
     def test_patrol_pair_plan_puts_entering_guards_on_first_night_when_roster_changes(self) -> None:
         start = datetime(2026, 6, 23, 20, 30)
         shifts = patrol_shifts()
         roster_days = _days(start, 30)
         guards = [
-            Guard("מאור אוחיון"),
-            Guard("עדי תורג׳מן"),
-            Guard("חנן דנינו"),
-            Guard("מאור תורג׳מן"),
+            Guard("Patrol W"),
+            Guard("Patrol X"),
+            Guard("Patrol Y"),
+            Guard("Patrol Z"),
         ]
         history = {
             "guards": {
-                "מאור תורג׳מן": {"total": 18, "shifts": {"20:30": 8, "02:30": 10}, "friday_dinner": 0},
-                "חנן דנינו": {"total": 7, "shifts": {"20:30": 4, "02:30": 3}, "friday_dinner": 0},
+                "Patrol Z": {"total": 18, "shifts": {"20:30": 8, "02:30": 10}, "friday_dinner": 0},
+                "Patrol Y": {"total": 7, "shifts": {"20:30": 4, "02:30": 3}, "friday_dinner": 0},
             }
         }
         continuity = {
@@ -108,19 +108,19 @@ class RotationFairnessTests(unittest.TestCase):
             "algorithm": "srr",
             "shift_duration_hours": 6,
             "first_shift_start": "20:30",
-            "guards": ["חנן דנינו", "יותם קדוש", "יחיאל אלבז", "מאור תורג׳מן"],
+            "guards": ["Patrol Y", "Patrol B", "Patrol A", "Patrol Z"],
             "roster_length_days": 14,
             "srr": {
                 "patrol_pair_mode": True,
                 "next_patrol_day_offset": 42,
-                "carryover_guard": "מאור תורג׳מן",
+                "carryover_guard": "Patrol Z",
                 "last_assignments": {
-                    "חנן דנינו": {"date": "2026-06-22", "start_time": "20:30"},
-                    "מאור תורג׳מן": {"date": "2026-06-23", "start_time": "02:30"},
+                    "Patrol Y": {"date": "2026-06-22", "start_time": "20:30"},
+                    "Patrol Z": {"date": "2026-06-23", "start_time": "02:30"},
                 },
             },
         }
-        rules = {"carryover_guard": "מאור תורג׳מן"}
+        rules = {"carryover_guard": "Patrol Z"}
         guard_allowed = build_guard_shift_constraints_lookup(guards)
 
         ordered, offset, carryover, _report = resolve_patrol_pair_plan(
@@ -135,10 +135,10 @@ class RotationFairnessTests(unittest.TestCase):
             shift_duration_hours=6,
         )
 
-        self.assertEqual(entering_guard_names(guards, continuity), {"מאור אוחיון", "עדי תורג׳מן"})
-        self.assertEqual(carryover, "מאור תורג׳מן")
+        self.assertEqual(entering_guard_names(guards, continuity), {"Patrol W", "Patrol X"})
+        self.assertEqual(carryover, "Patrol Z")
         self.assertEqual(offset % 2, 0)
-        self.assertEqual({guard.name for guard in ordered[0:2]}, {"מאור אוחיון", "עדי תורג׳מן"})
+        self.assertEqual({guard.name for guard in ordered[0:2]}, {"Patrol W", "Patrol X"})
 
         from roster_builder_app.scheduling.patrol_pair_srr import (
             patrol_guard_pairs,
@@ -152,8 +152,8 @@ class RotationFairnessTests(unittest.TestCase):
             patrol_guard_pairs(pair_order),
             global_day_offset=offset,
         )
-        self.assertIn(evening_guard.name, {"מאור אוחיון", "עדי תורג׳מן"})
-        self.assertIn(morning_guard.name, {"מאור אוחיון", "עדי תורג׳מן"})
+        self.assertIn(evening_guard.name, {"Patrol W", "Patrol X"})
+        self.assertIn(morning_guard.name, {"Patrol W", "Patrol X"})
         self.assertNotIn(evening_guard.name, carryover_guard_names(guards, continuity))
 
     def test_guard_srr_seed_picks_fairer_rotation_index_for_carryover(self) -> None:
